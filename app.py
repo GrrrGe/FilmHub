@@ -137,52 +137,66 @@ def recommend_for_me():
     return detail, gallery
 
 
+def chat_submit(message, history):
+    """Tuple-format chat (pinned gradio 4.x). Never raises into Gradio 'Error'."""
+    try:
+        if not (message or "").strip():
+            return "", history
+        reply = chat_fn(message, history)
+        history = (history or []) + [[message, reply]]
+        return "", history
+    except Exception as e:
+        history = (history or []) + [[message or "", f"UI error: {e}"]]
+        return "", history
+
+
 with gr.Blocks(theme=theme, title="FilmHub — Personal Movie Recommender") as demo:
     gr.Markdown(
         f"# 🎬 FilmHub\nYour multi-agent assistant + personal library. Your ID: `{session_state['user_id'][:8]}...`"
     )
 
-    with gr.Tab("💬 Chat"):
-        chatbot = gr.Chatbot(label="MovieBot", height=450)
-        msg = gr.Textbox(placeholder="Ask for a plot, rating, or 'recommend like Inception'...")
-        msg.submit(lambda m, h: ("", h + [[m, chat_fn(m, h)]]), [msg, chatbot], [msg, chatbot])
+    with gr.Tabs():
+        with gr.Tab("💬 Chat"):
+            chatbot = gr.Chatbot(label="MovieBot", height=450)
+            msg = gr.Textbox(placeholder="Ask for a plot, rating, or 'recommend like Inception'...")
+            msg.submit(chat_submit, [msg, chatbot], [msg, chatbot])
 
-    with gr.Tab("🔎 Browse & Rate"):
-        gr.Markdown("Search the catalog, **click a movie to see poster / summary / cast**, then give it your own 1–5★ rating.")
-        with gr.Row():
-            q = gr.Textbox(placeholder="e.g. The Matrix, sci-fi, Tarantino...", scale=4)
-            btn = gr.Button("Search", variant="primary", scale=1)
-        status = gr.Markdown("")
-        gallery = gr.Gallery(label="Results (click a poster)", columns=4, height="auto")
-        with gr.Row():
-            with gr.Column(scale=1):
-                poster = gr.Image(label="Poster", height=380)
-            with gr.Column(scale=2):
-                picker = gr.Dropdown(label="Pick movie for details", choices=[])
-                details = gr.HTML()
-                with gr.Row():
-                    stars = gr.Slider(1, 5, step=0.5, value=4.0, label="Your rating (★)")
-                    save_btn = gr.Button("⭐ Save watched + rating", variant="primary")
-                save_msg = gr.Markdown("")
-                hidden_title = gr.Textbox(visible=False)
-        btn.click(search_movies, [q], [gallery, status, picker])
-        q.submit(search_movies, [q], [gallery, status, picker])
-        picker.change(show_details, [picker], [poster, details, hidden_title])
-        gallery.select(on_gallery_select, None, [poster, details, hidden_title])
-        save_btn.click(save_rating, [hidden_title, stars], [save_msg])
+        with gr.Tab("🔎 Browse & Rate"):
+            gr.Markdown("Search the catalog, **click a movie to see poster / summary / cast**, then give it your own 1–5★ rating.")
+            with gr.Row():
+                q = gr.Textbox(placeholder="e.g. The Matrix, sci-fi, Tarantino...", scale=4)
+                btn = gr.Button("Search", variant="primary", scale=1)
+            status = gr.Markdown("")
+            gallery = gr.Gallery(label="Results (click a poster)", columns=4, height="auto")
+            with gr.Row():
+                with gr.Column(scale=1):
+                    poster = gr.Image(label="Poster", height=380)
+                with gr.Column(scale=2):
+                    picker = gr.Dropdown(label="Pick movie for details", choices=[])
+                    details = gr.HTML()
+                    with gr.Row():
+                        stars = gr.Slider(1, 5, step=0.5, value=4.0, label="Your rating (★)")
+                        save_btn = gr.Button("⭐ Save watched + rating", variant="primary")
+                    save_msg = gr.Markdown("")
+                    hidden_title = gr.Textbox(visible=False)
+            btn.click(search_movies, [q], [gallery, status, picker])
+            q.submit(search_movies, [q], [gallery, status, picker])
+            picker.change(show_details, [picker], [poster, details, hidden_title])
+            gallery.select(on_gallery_select, None, [poster, details, hidden_title])
+            save_btn.click(save_rating, [hidden_title, stars], [save_msg])
 
-    with gr.Tab("📚 My Library + For You"):
-        gr.Markdown("Movies **you watched + rated** steer all future recommendations (persisted in SQLite).")
-        with gr.Row():
-            lib_btn = gr.Button("↻ Load my library", variant="primary")
-            rec_btn = gr.Button("✨ Recommend for me")
-        lib_md = gr.Markdown("")
-        lib_table = gr.Dataframe(headers=["Title", "Your ★", "IMDb", "Genre"], label="Watched")
-        lib_gallery = gr.Gallery(label="Your shelf", columns=5)
-        rec_md = gr.Markdown("")
-        rec_gallery = gr.Gallery(label="Recommended for you", columns=4)
-        lib_btn.click(load_library, None, [lib_md, lib_table, lib_gallery])
-        rec_btn.click(recommend_for_me, None, [rec_md, rec_gallery])
+        with gr.Tab("📚 My Library + For You"):
+            gr.Markdown("Movies **you watched + rated** steer all future recommendations (persisted in SQLite).")
+            with gr.Row():
+                lib_btn = gr.Button("↻ Load my library", variant="primary")
+                rec_btn = gr.Button("✨ Recommend for me")
+            lib_md = gr.Markdown("")
+            lib_table = gr.Dataframe(headers=["Title", "Your ★", "IMDb", "Genre"], label="Watched")
+            lib_gallery = gr.Gallery(label="Your shelf", columns=5)
+            rec_md = gr.Markdown("")
+            rec_gallery = gr.Gallery(label="Recommended for you", columns=4)
+            lib_btn.click(load_library, None, [lib_md, lib_table, lib_gallery])
+            rec_btn.click(recommend_for_me, None, [rec_md, rec_gallery])
 
 if __name__ == "__main__":
     demo.launch(server_name="0.0.0.0", server_port=int(os.getenv("PORT", "7860")))
