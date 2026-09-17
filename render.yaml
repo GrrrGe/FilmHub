@@ -38,6 +38,5 @@ services:
           name: filmhub-api
           type: web
           property: host
-        # Render fills host without scheme; app adds https via code below? Set full URL manually after first deploy, see README.
-      - key: PORT
-        value: "7860"
+        # Render fills host without scheme; app.py prepends https:// automatically.
+        # After first deploy, replace with full https://filmhub-api-XXXX.onrender.com and redeploy UI.
