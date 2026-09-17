@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+.venv/
+.git/
+data/raw/
+data/filmhub_library.db
+embeddings/
+vectorstore/imdb_faiss.index
+vectorstore/filmhub_lc_faiss/

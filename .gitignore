@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+.venv/
+venv/
+bin/
+include/
+lib/
+lib64/
+*.egg-info/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# OS
+.DS_Store
+.Trash/
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.bak
+
+# Machine Learning / Data
+*.csv.gz
+*.pkl
+*.bin
+*.model
+*.pt
+*.tflite
+*.onnx
+*.npy
+*.npz
+# sqlite / db (comments must be on their own line)
+*.sqlite3
+*.db
+
+# Project Specific: regenerated, too large for git
+embeddings/
+vectorstore/*.index
+vectorstore/filmhub_lc_faiss/
+data/raw/
+data/filmhub_library.db
+
+# Environment Variables (CRUCIAL for sensitive info like API keys)
+.env

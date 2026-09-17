@@ -1,0 +1,17 @@
+google-adk
+fastapi
+uvicorn[standard]
+pydantic
+python-dotenv
+pandas
+numpy
+faiss-cpu
+gradio>=4.0
+requests
+# --- RAG (LangChain hybrid). Deploy default uses Gemini embeddings (no torch).
+langchain>=0.3
+langchain-community>=0.3
+langchain-google-genai>=2.0
+# Optional: only needed if RAG_EMBEDDINGS=local (offline dev). Heavy (~400MB torch).
+# langchain-huggingface>=0.1
+# sentence-transformers

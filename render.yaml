@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: filmhub-api
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: RAG_EMBEDDINGS
+        value: gemini
+      - key: RAG_EMBEDDING_MODEL
+        value: models/text-embedding-004
+      - key: RAG_CHAT_MODEL
+        value: gemini-1.5-flash
+      - key: RAG_LLM_EXPAND
+        value: "0"
+      - key: RAG_CSV
+        value: data/imdb_cleaned.csv
+      - key: RAG_FAISS_DIR
+        value: /tmp/filmhub_lc_faiss
+      - key: FILMHUB_DB
+        value: /tmp/filmhub_library.db
+
+  - type: web
+    name: filmhub-ui
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements-ui.txt
+    startCommand: python app.py
+    autoDeploy: true
+    envVars:
+      - key: FILMHUB_API_BASE
+        fromService:
+          name: filmhub-api
+          type: web
+          property: host
+        # Render fills host without scheme; app adds https via code below? Set full URL manually after first deploy, see README.
+      - key: PORT
+        value: "7860"
