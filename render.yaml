@@ -34,9 +34,7 @@ services:
     autoDeploy: true
     envVars:
       - key: FILMHUB_API_BASE
-        fromService:
-          name: filmhub-api
-          type: web
-          property: host
-        # Render fills host without scheme; app.py prepends https:// automatically.
-        # After first deploy, replace with full https://filmhub-api-XXXX.onrender.com and redeploy UI.
+        sync: false
+        # MUST be the full public API URL, e.g. https://filmhub-api-XXXX.onrender.com
+        # (Render's fromService host gives an internal-only hostname that browsers
+        #  can't resolve, so we set this manually after the API first deploys.)
