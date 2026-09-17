@@ -174,14 +174,19 @@ def remove_from_library(user_id: str, title: str):
 
 
 @app.get("/recommend/{user_id}")
-def recommend_personalized(user_id: str, base: str = "movies similar to my top rated films", top_k: int = 5):
+def recommend_personalized(user_id: str, base: str = "movies similar to my top rated films", top_k: int = 5,
+                           exclude: str = "", min_rating: float = 0.0, min_metascore: float = 0.0):
     """RAG recs (0 LLM calls by default): taste expansion + retrieve + IMDb rerank.
 
+    Filters: `exclude` (comma-separated, input movie auto-excluded), `min_rating`
+    (IMDb floor), `min_metascore`. Hybrid CF blends in when 2+ users rated.
     Legacy ADK critic->recommender chain kept only inside /chat for conversation.
     Set RAG_LLM_EXPAND=1 to re-enable 1 LLM expansion call here."""
     if rag_service is not None:
         try:
-            return rag_service.recommend(user_id, base=base, top_k=top_k)
+            return rag_service.recommend(user_id, base=base, top_k=top_k,
+                                         exclude=[e.strip() for e in exclude.split(",") if e.strip()],
+                                         min_imdb=min_rating, min_metascore=min_metascore)
         except Exception as e:
             print(f"RAG recommend error: {e}")
     liked = library_store.get_highly_rated(user_id)

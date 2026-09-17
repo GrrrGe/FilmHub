@@ -28,12 +28,16 @@ def get_movie_details_tool(title: str) -> dict:
         return {"movie": details}
     return {"movie": None, "message": f"No movie found for '{title}'"}
 
-# --- UPGRADED RECOMMENDATION TOOL (rating-aware) ---
+# --- UPGRADED RECOMMENDATION TOOL (rating-aware + post-retrieval ranking) ---
 def recommend_movies(
     base_query: str,
     liked_movies: Optional[List[str]] = None,
     disliked_movies: Optional[List[str]] = None,
     user_id: Optional[str] = None,
+    exclude_titles: Optional[List[str]] = None,
+    min_rating: float = 0.0,
+    min_metascore: float = 0.0,
+    top_k: int = 5,
 ) -> dict:
     """
     Recommends movies based on a query, using the user's liked and
@@ -41,6 +45,8 @@ def recommend_movies(
 
     NEW: if user_id is given, highly-rated (4-5 star) watched movies from
     the persistent library are added to the query expansion.
+    Post-retrieval: excludes input/seen titles, applies min IMDb/MetaScore
+    floors, and reranks by semantic position + rating + metascore.
     """
     logging.info(f"TOOL EXECUTED: recommend_movies(base_query='{base_query}')")
     
@@ -65,20 +71,30 @@ def recommend_movies(
     # to filter out or penalize certain results. For now, we'll keep it simple.
     
     recommendations = movie_retriever_instance.search(search_text, top_k=10) # Get more results to filter
-    
-    # Filter out movies the user has already liked or disliked to avoid re-recommending.
-    final_recommendations = []
-    if recommendations:
-        for rec in recommendations:
-            title = rec.get('Title')
-            if title:
-                # Keep the recommendation if it's not in the user's liked or disliked lists.
-                if (not liked_movies or title not in liked_movies) and \
-                   (not disliked_movies or title not in disliked_movies):
-                    final_recommendations.append(rec)
-    
-    # Return the top 5 of the filtered list.
-    return {"recommendations": final_recommendations[:5]}
+
+    def _num(x, default=0.0):
+        try:
+            return float(x)
+        except Exception:
+            return default
+
+    # Post-retrieval ranking & filtering: exclude input/seen, quality floors, rerank.
+    excluded = set(liked_movies or []) | set(disliked_movies or []) | set(exclude_titles or [base_query])
+    scored = []
+    for rec in recommendations or []:
+        title = rec.get('Title')
+        if not title or title in excluded:
+            continue
+        imdb = _num(rec.get('IMDb Rating', 0))
+        meta = _num(rec.get('MetaScore', 0))
+        if imdb < min_rating or meta < min_metascore:
+            continue
+        scored.append((imdb / 10.0 + meta / 1000.0, rec))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    final_recommendations = [rec for _, rec in scored]
+
+    # Return the top N of the filtered list.
+    return {"recommendations": final_recommendations[:top_k]}
 
 
 def update_user_preferences(

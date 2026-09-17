@@ -27,12 +27,15 @@ def load_documents(limit=None):
             if limit and i >= limit:
                 break
             title = _safe(row, "Title", "Unknown")
-            plot = row.get("Generated_Plot") or "No plot available."
+            # Official verified plot first, LLM-generated fallback (see scripts/enrich_official_plots.py)
+            plot = (row.get("Official_Plot") or "").strip() or (row.get("Generated_Plot") or "").strip() or "No plot available."
+            plot_source = (row.get("Plot_Source") or ("official" if row.get("Official_Plot") else "generated")).strip()
             genre = _safe(row, "Genre", "N/A")
             page = f"{title} | {genre}\n{plot}"
             meta = {
                 "title": title,
                 "plot": plot,
+                "plot_source": plot_source,
                 "poster": _safe(row, "Poster-src", ""),
                 "cast": _safe(row, "Star Cast", ""),
                 "director": _safe(row, "Director", "N/A"),

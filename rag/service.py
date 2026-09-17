@@ -34,7 +34,10 @@ def search(query: str, top_k=8):
     return {"results": search_movies_by_keywords(query, top_k=top_k), "mode": "keyword"}
 
 
-def recommend(user_id: str, base="movies similar to my top rated films", top_k=5):
+def recommend(user_id: str, base="movies similar to my top rated films", top_k=5,
+              exclude=None, min_imdb=0.0, min_metascore=0.0):
+    from . import hybrid_cf
+    from . import config as _cfg
     liked = library_store.get_highly_rated(user_id) or library_store.get_all_liked_titles(user_id)
     disliked_rows = [m["title"] for m in library_store.get_library(user_id) if (m.get("rating") or 5) < 3.0]
     plots = {t: (get_movie_details(t) or {}).get("plot", "") for t in liked[:3]}
@@ -43,7 +46,23 @@ def recommend(user_id: str, base="movies similar to my top rated films", top_k=5
         retriever, mode = vectorstore.get_retriever(k=12)
         if retriever is not None:
             docs = retriever.invoke(q) if hasattr(retriever, "invoke") else retriever.get_relevant_documents(q)
-            ranked = chains.rerank(docs, liked=liked, disliked=disliked_rows, top_k=top_k)
+            ranked = chains.rerank(docs, liked=liked, disliked=disliked_rows, top_k=top_k * 2,
+                                   exclude=exclude or [base],
+                                   min_imdb=min_imdb or _cfg.MIN_IMDB,
+                                   min_metascore=min_metascore or _cfg.MIN_METASCORE)
+            titles = [_meta_to_ui(d.metadata)["title"] for d in ranked if hasattr(d, "metadata")]
+            # Hybrid CF blend (BPR-lite): needs >=2 users with ratings, else content-only
+            if _cfg.HYBRID_CF:
+                try:
+                    cf = hybrid_cf.cf_scores_for_user(user_id, min_overlap=_cfg.CF_MIN_OVERLAP)
+                    order = hybrid_cf.blend(titles, cf, alpha=_cfg.CF_ALPHA)
+                    by_title = {_meta_to_ui(d.metadata)["title"]: d for d in ranked if hasattr(d, "metadata")}
+                    ranked = [by_title[t] for t in order if t in by_title][:top_k]
+                except Exception as e:
+                    logger.warning(f"CF blend skipped: {e}")
+                    ranked = ranked[:top_k]
+            else:
+                ranked = ranked[:top_k]
             return {
                 "user_id": user_id,
                 "based_on": liked[:5],

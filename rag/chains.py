@@ -66,19 +66,26 @@ def _to_float(x, default=0.0):
         return default
 
 
-def rerank(docs, liked=None, disliked=None, top_k=5):
-    """Filter seen/disliked, boost IMDb rating. Pure python, no LLM."""
-    liked, disliked = set(liked or []), set(disliked or [])
-    scored = []
-    for d in docs:
-        meta = d.metadata if hasattr(d, "metadata") else d.get("metadata", {})
-        title = meta.get("title", "")
-        if title in liked or title in disliked:
-            continue
-        score = _to_float(meta.get("rating"), 5.0) / 10.0  # IMDb/10 as quality prior
-        scored.append((score, d))
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [d for _, d in scored[:top_k]]
+def rerank(docs, liked=None, disliked=None, top_k=5, exclude=None,
+           min_imdb=0.0, min_metascore=0.0):
+    """Filter seen/disliked + quality floors, rerank by semantic+IMDb+MetaScore.
+
+    Backward-compatible: old callers pass liked/disliked only.
+    `exclude` additionally filters the input movie (so recs never echo the query).
+    """
+    from . import ranking
+    try:
+        cfg_min_imdb = float(getattr(config, "MIN_IMDB", 0.0) or 0.0)
+        cfg_min_meta = float(getattr(config, "MIN_METASCORE", 0.0) or 0.0)
+    except Exception:
+        cfg_min_imdb, cfg_min_meta = 0.0, 0.0
+    return ranking.filter_and_rank(
+        docs,
+        exclude=set(liked or []) | set(disliked or []) | set(exclude or []),
+        min_imdb=max(min_imdb, cfg_min_imdb),
+        min_metascore=max(min_metascore, cfg_min_meta),
+        top_k=top_k,
+    )
 
 
 def answer_question(question: str, docs) -> str:

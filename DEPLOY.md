@@ -18,6 +18,14 @@ On `filmhub-api`:
 - `GEMINI_API_KEY` = get at https://aistudio.google.com/apikey
 - `GOOGLE_API_KEY` = same value (legacy ADK reads this name)
 
+Optional (only for official verified plots):
+- `TMDB_API_KEY` = free at themoviedb.org (preferred) and/or `OMDB_API_KEY` = omdbapi.com
+- Without these the app uses LLM `Generated_Plot`s; run `make enrich LIMIT=200` locally once keys exist, then `make index`.
+
+Quality/hybrid knobs (defaults fine on free tier):
+`MIN_IMDB=0, MIN_METASCORE=0, HYBRID_CF=1, CF_ALPHA=0.7`
+Per-request too: `/recommend/{id}?exclude=Inception&min_rating=7&min_metascore=60`
+
 Kept defaults (no action needed):
 `RAG_EMBEDDINGS=gemini, RAG_CHAT_MODEL=gemini-1.5-flash, RAG_LLM_EXPAND=0, RAG_FAISS_DIR=/tmp/filmhub_lc_faiss, FILMHUB_DB=/tmp/filmhub_library.db`
 

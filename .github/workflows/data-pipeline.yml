@@ -1,0 +1,25 @@
+name: data-pipeline
+on:
+  pull_request:
+    paths: ["data/**", "scripts/**", "rag/**", "storage/**", "Makefile"]
+  workflow_dispatch:
+    inputs:
+      enrich_limit:
+        description: "Rows to enrich with TMDb/OMDb (needs secrets)"
+        default: "0"
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - run: python -m py_compile main.py app.py rag/*.py storage/*.py tools/*.py scripts/*.py
+      - run: python scripts/verify_data.py
+      - name: Enrich official plots (only if keys + limit>0)
+        if: github.event.inputs.enrich_limit != '0' && github.event.inputs.enrich_limit != ''
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          OMDB_API_KEY: ${{ secrets.OMDB_API_KEY }}
+        run: python scripts/enrich_official_plots.py --limit ${{ github.event.inputs.enrich_limit }}

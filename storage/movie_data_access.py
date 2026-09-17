@@ -2,6 +2,8 @@ import pandas as pd
 import logging
 from typing import Optional, Dict, List
 
+from storage.plot_source import best_plot
+
 try:
     # Make sure the CSV file is located at 'data/imdb_cleaned.csv'
     MOVIE_DATA = pd.read_csv("data/imdb_cleaned.csv")
@@ -25,9 +27,11 @@ def _row_to_details(row) -> dict:
             return default
 
     raw_cast = safe("Star Cast", "")
+    plot_val = best_plot(row.to_dict() if hasattr(row, "to_dict") else dict(row))
     return {
         "title": safe("Title", "Unknown"),
-        "plot": safe("Generated_Plot", "No plot available."),
+        "plot": plot_val,
+        "plot_source": safe("Plot_Source", "generated" if plot_val != "No plot available." else "N/A"),
         "poster": safe("Poster-src", ""),
         "cast": str(raw_cast),
         "director": safe("Director", "N/A"),
