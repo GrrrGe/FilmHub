@@ -29,10 +29,12 @@ services:
     name: filmhub-ui
     runtime: python
     plan: free
-    buildCommand: pip install -r requirements-ui.txt
+    buildCommand: pip install --upgrade pip && pip install -r requirements-ui.txt
     startCommand: python app.py
     autoDeploy: true
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: FILMHUB_API_BASE
         sync: false
         # MUST be the full public API URL, e.g. https://filmhub-api-XXXX.onrender.com
